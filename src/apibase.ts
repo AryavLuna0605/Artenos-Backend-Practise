@@ -1,5 +1,7 @@
 import Koa from "koa"
 import { z } from "zod"
+import multer from "@koa/multer"
+import { unlink } from "node:fs/promises"
 
 interface BaseBody {}
 
@@ -24,6 +26,20 @@ export class APIError<T extends BaseBody> {
     }
   }
 }
+
+export type File = {
+  filename: string
+  mimetype: string
+  path: string
+  bytes?: number
+}
+
+export const fileSchema = z.object({
+  filename: z.string().min(1),
+  mimetype: z.string().min(1),
+  path: z.string().min(1),
+  bytes: z.number().int().positive().optional(),
+})
 
 export function err<T extends BaseBody>(
   status: number,
@@ -103,23 +119,56 @@ export function handlerToKoaMiddleware(
     handler,
   } = opts
   return async (ctx) => {
+    const contentType = ctx.request.headers["content-type"] || null
+    let reqBody
+
+    if (contentType && contentType.startsWith("multipart/form-data;")) {
+      const multipartBodyData = ctx.request.body || {}
+      if(ctx.files){
+        for (const file of ctx.files as multer.File[]) {
+          const f: File = {
+            filename: file.originalname,
+            mimetype: file.mimetype,
+            path: file.path
+          }
+          multipartBodyData[file.fieldname] = f
+        }
+      }
+      reqBody = z.object(bodySchema).safeParse(multipartBodyData)
+    }else if (contentType && contentType == "application/json") {
+      reqBody = z.object(bodySchema).safeParse(ctx.request.body || {})
+    }else{
+      throw err(415, "Invalid content-type", {
+        errors: "Invalid content-type",
+      })
+    }
+
+    if (reqBody.success === false) {
+      throw err(400, "Invalid request body", {
+        errors: reqBody.error.errors,
+      })
+    }
+
     const params = z.object(paramsSchema).strict().safeParse(ctx.params)
     if (params.success === false) {
       throw err(400, "Invalid URL params", {
         errors: params.error.errors,
       })
     }
-    const reqBody = z.object(bodySchema).safeParse(ctx.request.body || {})
-    if (reqBody.success === false) {
-      throw err(400, "Invalid request body", {
-        errors: reqBody.error.errors,
-      })
-    }
+
     const result = await handler({
       params: params.data,
-      body: reqBody.data,
+      body: reqBody.data!,
       headers: ctx.request.headers,
     })
+
+    // Delete the temp files once handler has processed the request
+    if(ctx.files){
+      for (const file of ctx.files as multer.File[]) {
+        await unlink(file.path)
+      }
+    }
+
     if (result instanceof APIResponse) {
       const respBody = z.object(respSchema).safeParse(result.data)
       if (respBody.success === false) {
