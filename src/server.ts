@@ -18,7 +18,7 @@ const rootPath = path.resolve(process.cwd())
 
 // Note:
 // This stores the files that are uploaded via the APIs to disk temporarily
-// The other option is memory storage, which keeps the content of the file in memory
+// The other option is memory storage, which keeps the content of the files in memory
 // Based on the requirements, we can switch the storage option. 
 // Disk storage will increase the latency, but is the more robust option to keep memory usage low, specially for large files
 // If the "uploads" folder does not exist, it will be created automatically at the path provided

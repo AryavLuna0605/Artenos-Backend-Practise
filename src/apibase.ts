@@ -120,10 +120,11 @@ export function handlerToKoaMiddleware(
   } = opts
   return async (ctx) => {
     const contentType = ctx.request.headers["content-type"] || null
-    let reqBody
+    
+    let reqBodyObj
 
     if (contentType && contentType.startsWith("multipart/form-data;")) {
-      const multipartBodyData = ctx.request.body || {}
+      reqBodyObj = ctx.request.body || {}
       if(ctx.files){
         for (const file of ctx.files as multer.File[]) {
           const f: File = {
@@ -131,17 +132,18 @@ export function handlerToKoaMiddleware(
             mimetype: file.mimetype,
             path: file.path
           }
-          multipartBodyData[file.fieldname] = f
+          reqBodyObj[file.fieldname] = f
         }
       }
-      reqBody = z.object(bodySchema).safeParse(multipartBodyData)
     }else if (contentType && contentType == "application/json") {
-      reqBody = z.object(bodySchema).safeParse(ctx.request.body || {})
+      reqBodyObj = ctx.request.body || {}
     }else{
       throw err(415, "Invalid content-type", {
         errors: "Invalid content-type",
       })
     }
+
+    const reqBody = z.object(bodySchema).safeParse(reqBodyObj)
 
     if (reqBody.success === false) {
       throw err(400, "Invalid request body", {
