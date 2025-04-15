@@ -1,8 +1,8 @@
-import * as winston from "winston";
-import * as Transport from "winston-transport";
-import config from "./config.js";
+import * as winston from "winston"
+import * as Transport from "winston-transport"
+import config from "./config.js"
 
-const transports: Transport[] = [];
+const transports: Transport[] = []
 
 // Use this to format logs in development enviornment
 const devConsoleTransport = new winston.transports.Console({
@@ -10,28 +10,28 @@ const devConsoleTransport = new winston.transports.Console({
   format: winston.format.combine(
     winston.format.colorize(),
     winston.format.printf((info) => {
-      let { timestamp, level, message, stack } = info;
-      return `${level} -> ${timestamp} - ${message}  ${stack ? `\n ${stack}` : ""}`;
+      let { timestamp, level, message, stack } = info
+      return `${level} -> ${timestamp} - ${message}  ${stack ? `\n ${stack}` : ""}`
     }),
   ),
-});
+})
 
 // Use this to format logs in development enviornment
 const prodConsoleTransport = new winston.transports.Console({
   stderrLevels: ["error"],
   format: winston.format.combine(
     winston.format.printf((info) => {
-      console.log(info);
-      let { timestamp, level, message, stack } = info;
-      return `${level} ${timestamp} ${message}  ${stack ? `\n ${stack}` : ""}`;
+      console.log(info)
+      let { timestamp, level, message, stack } = info
+      return `${level} ${timestamp} ${message}  ${stack ? `\n ${stack}` : ""}`
     }),
   ),
-});
+})
 
 if (config.NODE_ENV === "development") {
-  transports.push(devConsoleTransport);
+  transports.push(devConsoleTransport)
 } else {
-  transports.push(prodConsoleTransport);
+  transports.push(prodConsoleTransport)
 }
 
 const logger = winston.createLogger({
@@ -48,6 +48,6 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
   ),
   transports,
-});
+})
 
-export default logger;
+export default logger
