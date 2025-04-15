@@ -1,72 +1,72 @@
-import Koa from "koa"
-import { z } from "zod"
-import multer from "@koa/multer"
-import { unlink } from "node:fs/promises"
+import Koa from "koa";
+import { z } from "zod";
+import multer from "@koa/multer";
+import { unlink } from "node:fs/promises";
 
 interface BaseBody {}
 
 export class APIError<T extends BaseBody> {
-  readonly ok = false
-  readonly message: string
-  readonly status: number
-  readonly data: T
+  readonly ok = false;
+  readonly message: string;
+  readonly status: number;
+  readonly data: T;
 
   /**
    * @deprecated Use {@link err} instead
    */
   constructor(status: number, message: string, body = {} as T) {
-    this.message = message
-    this.status = status
-    this.data = body
+    this.message = message;
+    this.status = status;
+    this.data = body;
 
     if (this.status < 400 || this.status >= 600) {
       throw new Error(
         `status code must be between 400 and 599, got ${this.status}`,
-      )
+      );
     }
   }
 }
 
 export type File = {
-  filename: string
-  mimetype: string
-  path: string
-  bytes?: number
-}
+  filename: string;
+  mimetype: string;
+  path: string;
+  bytes?: number;
+};
 
 export const fileSchema = z.object({
   filename: z.string().min(1),
   mimetype: z.string().min(1),
   path: z.string().min(1),
   bytes: z.number().int().positive().optional(),
-})
+});
 
 export function err<T extends BaseBody>(
   status: number,
   message: string,
   body = {} as T,
 ) {
-  return new APIError(status, message, body)
+  return new APIError(status, message, body);
 }
 
 export class APIResponse<T extends BaseBody> {
-  readonly ok = true
-  readonly status: number
-  readonly message: string
-  readonly data: T
+  readonly ok = true;
+  readonly status: number;
+  readonly message: string;
+  readonly data: T;
 
   /**
    * @deprecated Use {@link resp} instead
    */
   constructor(status: number, message: string, body = {} as T) {
-    this.status = status
-    this.message = message
-    this.data = body
+    this.status = status;
+    this.message = message;
+    this.data = body;
 
     if (this.status < 200 || this.status >= 300) {
       throw new Error(
         `status code must be between 200 and 299, got ${this.status}`,
-      )
+      );
     }
   }
 }
@@ -76,7 +76,7 @@ export function resp<T extends BaseBody>(
   message: string,
   body = {} as T,
 ) {
-  return new APIResponse(status, message, body)
+  return new APIResponse(status, message, body);
 }
 
 export type APIHandler<
@@ -85,19 +85,19 @@ export type APIHandler<
   TResp extends z.ZodRawShape,
   TErr extends z.ZodRawShape,
 > = {
-  paramsSchema?: TParams
-  bodySchema?: TBody
-  respSchema?: TResp
-  errSchema?: TErr
+  paramsSchema?: TParams;
+  bodySchema?: TBody;
+  respSchema?: TResp;
+  errSchema?: TErr;
   handler: (handlerCtx: {
-    params: z.infer<z.ZodObject<TParams>>
-    body: z.infer<z.ZodObject<TBody>>
-    headers: Koa.Request["headers"]
+    params: z.infer<z.ZodObject<TParams>>;
+    body: z.infer<z.ZodObject<TBody>>;
+    headers: Koa.Request["headers"];
   }) => Promise<
     | APIResponse<z.infer<z.ZodObject<TResp>>>
     | APIError<z.infer<z.ZodObject<TErr>>>
-  >
-}
+  >;
+};
 
 export function apihandler<
   TParams extends z.ZodRawShape = {},
@@ -105,7 +105,7 @@ export function apihandler<
   TResp extends z.ZodRawShape = {},
   TErr extends z.ZodRawShape = {},
 >(apiHander: APIHandler<TParams, TBody, TResp, TErr>) {
-  return apiHander
+  return apiHander;
 }
 
 export function handlerToKoaMiddleware(
@@ -117,79 +117,79 @@ export function handlerToKoaMiddleware(
     respSchema = {},
     errSchema = {},
     handler,
-  } = opts
+  } = opts;
   return async (ctx) => {
-    try{
-      const contentType = ctx.request.headers["content-type"] || null
-    
-      let reqBodyObj
-  
+    try {
+      const contentType = ctx.request.headers["content-type"] || null;
+
+      let reqBodyObj;
+
       if (contentType && contentType.startsWith("multipart/form-data;")) {
-        reqBodyObj = ctx.request.body || {}
-        if(ctx.files){
+        reqBodyObj = ctx.request.body || {};
+        if (ctx.files) {
           for (const file of ctx.files as multer.File[]) {
             const f: File = {
               filename: file.originalname,
               mimetype: file.mimetype,
-              path: file.path
-            }
-            reqBodyObj[file.fieldname] = f
+              path: file.path,
+            };
+            reqBodyObj[file.fieldname] = f;
           }
         }
-      }else if (contentType && contentType == "application/json") {
-        reqBodyObj = ctx.request.body || {}
-      }else{
+      } else if (contentType && contentType == "application/json") {
+        reqBodyObj = ctx.request.body || {};
+      } else {
         throw err(415, "Invalid content-type", {
           errors: "Invalid content-type",
-        })
+        });
       }
-  
-      const reqBody = z.object(bodySchema).safeParse(reqBodyObj)
-  
+
+      const reqBody = z.object(bodySchema).safeParse(reqBodyObj);
+
       if (reqBody.success === false) {
         throw err(400, "Invalid request body", {
           errors: reqBody.error.errors,
-        })
+        });
       }
-  
-      const params = z.object(paramsSchema).strict().safeParse(ctx.params)
+
+      const params = z.object(paramsSchema).strict().safeParse(ctx.params);
       if (params.success === false) {
         throw err(400, "Invalid URL params", {
           errors: params.error.errors,
-        })
+        });
       }
       const result = await handler({
         params: params.data,
         body: reqBody.data!,
         headers: ctx.request.headers,
-      })
-  
+      });
+
       if (result instanceof APIResponse) {
-        const respBody = z.object(respSchema).safeParse(result.data)
+        const respBody = z.object(respSchema).safeParse(result.data);
         if (respBody.success === false) {
-          throw new Error(`Invalid response body: ${respBody.error}`)
+          throw new Error(`Invalid response body: ${respBody.error}`);
         }
-        ctx.body = resp(result.status, result.message, respBody.data)
+        ctx.body = resp(result.status, result.message, respBody.data);
       } else if (result instanceof APIError) {
-        const errBody = z.object(errSchema).strict().safeParse(result.data)
+        const errBody = z.object(errSchema).strict().safeParse(result.data);
         if (errBody.success === false) {
-          throw new Error(`Invalid error body: ${errBody.error}`)
+          throw new Error(`Invalid error body: ${errBody.error}`);
         }
-        throw err(result.status, result.message, errBody.data)
+        throw err(result.status, result.message, errBody.data);
       } else {
         throw new Error(
           `Invalid handler return value: ${result} of type ${typeof result}`,
-        )
+        );
       }
-    }finally{
+    } finally {
       // We must delete the uploaded files, even if some error is thrown while handling the request
-      if(ctx.files){
+      if (ctx.files) {
         for (const file of ctx.files as multer.File[]) {
-          await unlink(file.path)
+          await unlink(file.path);
         }
       }
     }
-  }
+  };
 }
 
-export { z as s }
+export { z as s };

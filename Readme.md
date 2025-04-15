@@ -5,6 +5,7 @@ This is the a starter template to build APIs using Koa and Postgres
 ## Local Development
 
 ### Database Setup
+
 PostgreSQL is the only database used.
 
 To set up the PostgreSQL database for the API server:
