@@ -2,11 +2,11 @@
   "name": "be_template",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/server.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc-watch --onSuccess \"node ./dist/server.js\"",
+    "dev": "tsc-watch --onSuccess \"node .\"",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
