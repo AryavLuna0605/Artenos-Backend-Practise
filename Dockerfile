@@ -1,21 +1,16 @@
-FROM ubuntu:22.04
-
-RUN apt-get update
-RUN apt-get install -y wget xz-utils \
-    && wget https://nodejs.org/dist/v20.10.0/node-v20.10.0-linux-x64.tar.xz \
-    && ls -l \
-    && tar xf node-v20.10.0-linux-x64.tar.xz \
-    && mv node-v20.10.0-linux-x64 /usr/local/node \
-    && rm node-v20.10.0-linux-x64.tar.xz \
-    && ln -s /usr/local/node/bin/node /usr/local/bin/node \
-    && ln -s /usr/local/node/bin/npm /usr/local/bin/npm
-
+FROM node:22 AS build
 WORKDIR /app
-
-COPY package.json package-lock.json ./
-
+COPY package.json ./
+COPY package-lock.json ./
 RUN npm ci
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build
 
-COPY dist ./dist
-
+FROM node:22 AS dist
+WORKDIR /app
+COPY --from=build /app/package.json ./
+COPY --from=build /app/package-lock.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
 CMD ["node", "."]
