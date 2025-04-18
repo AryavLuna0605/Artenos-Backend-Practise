@@ -27,14 +27,6 @@ export class APIError<T extends BaseBody> {
   }
 }
 
-export const FileSchema = z.object({
-  filename: z.string().min(1),
-  mimetype: z.string().min(1),
-  bytes: z.instanceof(Buffer),
-})
-
-type File = z.infer<typeof FileSchema>
-
 export function err<T extends BaseBody>(
   status: number,
   message: string,
@@ -72,6 +64,14 @@ export function resp<T extends BaseBody>(
 ) {
   return new APIResponse(status, message, body)
 }
+
+export const FileSchema = z.object({
+  filename: z.string().min(1),
+  mimetype: z.string().min(1),
+  bytes: z.instanceof(Buffer),
+})
+
+type File = z.infer<typeof FileSchema>
 
 type APIHandler<
   TParams extends z.ZodRawShape,
