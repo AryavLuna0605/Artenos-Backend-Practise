@@ -1,7 +1,7 @@
+import multer from "@koa/multer"
+import Router from "@koa/router"
 import Koa from "koa"
 import { z } from "zod"
-import multer from "@koa/multer"
-import { unlink } from "node:fs/promises"
 
 interface BaseBody {}
 
@@ -80,7 +80,7 @@ export function resp<T extends BaseBody>(
   return new APIResponse(status, message, body)
 }
 
-export type APIHandler<
+type APIHandler<
   TParams extends z.ZodRawShape,
   TQuery extends z.ZodRawShape,
   TBody extends z.ZodRawShape,
@@ -117,7 +117,7 @@ export function apihandler<
   return apiHander
 }
 
-export function handlerToKoaMiddleware(
+function handlerToKoaMiddleware(
   opts: APIHandler<
     z.ZodRawShape,
     z.ZodRawShape,
@@ -212,6 +212,83 @@ export function handlerToKoaMiddleware(
       )
     }
   }
+}
+
+export const GET = "GET"
+export const POST = "POST"
+export const PUT = "PUT"
+export const DELETE = "DELETE"
+export const PATCH = "PATCH"
+
+type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
+
+type Endpt = {
+  type: "endpt"
+  method: Method
+  path: string
+  handler: APIHandler<any, any, any, any, any, any>
+}
+
+type Middle = {
+  type: "middl"
+  middleware: Koa.Middleware[]
+}
+
+type Group = {
+  type: "group"
+  path: string
+  children: (Endpt | Middle | Group)[]
+}
+
+export function endpt(
+  path: string,
+  method: Method,
+  handler: APIHandler<any, any, any, any, any, any>,
+): Endpt {
+  return { type: "endpt", method, path, handler }
+}
+
+export function middl(...middleware: Koa.Middleware[]): Middle {
+  return { type: "middl", middleware }
+}
+
+export function group(
+  path: string,
+  children: (Endpt | Middle | Group)[],
+): Group {
+  return { type: "group", path, children }
+}
+
+export type RouteConf = Group
+
+export function createRouterFromConfig(config: RouteConf): Router {
+  const router = new Router()
+  for (const child of config.children) {
+    if (child.type === "endpt") {
+      switch (child.method) {
+        case "GET":
+          router.get(child.path, handlerToKoaMiddleware(child.handler))
+          break
+        case "POST":
+          router.post(child.path, handlerToKoaMiddleware(child.handler))
+          break
+        case "PUT":
+          router.put(child.path, handlerToKoaMiddleware(child.handler))
+          break
+        case "DELETE":
+          router.delete(child.path, handlerToKoaMiddleware(child.handler))
+          break
+        case "PATCH":
+          router.patch(child.path, handlerToKoaMiddleware(child.handler))
+          break
+      }
+    } else if (child.type === "middl") {
+      router.use(...child.middleware)
+    } else {
+      router.use(createRouterFromConfig(child).routes())
+    }
+  }
+  return new Router().use(config.path, router.routes())
 }
 
 export { z as s }
