@@ -27,12 +27,13 @@ export class APIError<T extends BaseBody> {
   }
 }
 
-export type File = {
-  filename: string
-  mimetype: string
-  path: string
-  bytes?: number
-}
+const FileSchema = z.object({
+  filename: z.string().min(1),
+  mimetype: z.string().min(1),
+  bytes: z.instanceof(Buffer),
+})
+
+type File = z.infer<typeof FileSchema>
 
 export const fileSchema = z.object({
   filename: z.string().min(1),
@@ -81,17 +82,23 @@ export function resp<T extends BaseBody>(
 
 export type APIHandler<
   TParams extends z.ZodRawShape,
+  TQuery extends z.ZodRawShape,
   TBody extends z.ZodRawShape,
+  TFiles extends Record<string, { maxCount: number }>,
   TResp extends z.ZodRawShape,
   TErr extends z.ZodRawShape,
 > = {
   paramsSchema?: TParams
+  querySchema?: TQuery
   bodySchema?: TBody
+  fileSchema?: TFiles
   respSchema?: TResp
   errSchema?: TErr
   handler: (handlerCtx: {
     params: z.infer<z.ZodObject<TParams>>
+    query: z.infer<z.ZodObject<TQuery>>
     body: z.infer<z.ZodObject<TBody>>
+    files: { [Key in keyof TFiles]: File[] }
     headers: Koa.Request["headers"]
   }) => Promise<
     | APIResponse<z.infer<z.ZodObject<TResp>>>
@@ -101,93 +108,108 @@ export type APIHandler<
 
 export function apihandler<
   TParams extends z.ZodRawShape = {},
+  TQuery extends z.ZodRawShape = {},
   TBody extends z.ZodRawShape = {},
+  TFiles extends Record<string, { maxCount: number }> = {},
   TResp extends z.ZodRawShape = {},
   TErr extends z.ZodRawShape = {},
->(apiHander: APIHandler<TParams, TBody, TResp, TErr>) {
+>(apiHander: APIHandler<TParams, TQuery, TBody, TFiles, TResp, TErr>) {
   return apiHander
 }
 
 export function handlerToKoaMiddleware(
-  opts: APIHandler<z.ZodRawShape, z.ZodRawShape, z.ZodRawShape, z.ZodRawShape>,
+  opts: APIHandler<
+    z.ZodRawShape,
+    z.ZodRawShape,
+    z.ZodRawShape,
+    Record<string, { maxCount: number }>,
+    z.ZodRawShape,
+    z.ZodRawShape
+  >,
 ): Koa.Middleware {
   const {
     paramsSchema = {},
+    querySchema = {},
     bodySchema = {},
+    fileSchema = {},
     respSchema = {},
     errSchema = {},
     handler,
   } = opts
   return async (ctx) => {
-    try {
-      const contentType = ctx.request.headers["content-type"] || null
-
-      let reqBodyObj
-
-      if (contentType && contentType.startsWith("multipart/form-data;")) {
-        reqBodyObj = ctx.request.body || {}
-        if (ctx.files) {
-          for (const file of ctx.files as multer.File[]) {
-            const f: File = {
-              filename: file.originalname,
-              mimetype: file.mimetype,
-              path: file.path,
-            }
-            reqBodyObj[file.fieldname] = f
-          }
-        }
-      } else if (contentType && contentType == "application/json") {
-        reqBodyObj = ctx.request.body || {}
-      } else {
-        throw err(415, "Invalid content-type", {
-          errors: "Invalid content-type",
-        })
-      }
-
-      const reqBody = z.object(bodySchema).safeParse(reqBodyObj)
-
-      if (reqBody.success === false) {
-        throw err(400, "Invalid request body", {
-          errors: reqBody.error.errors,
-        })
-      }
-
-      const params = z.object(paramsSchema).strict().safeParse(ctx.params)
-      if (params.success === false) {
-        throw err(400, "Invalid URL params", {
-          errors: params.error.errors,
-        })
-      }
-      const result = await handler({
-        params: params.data,
-        body: reqBody.data!,
-        headers: ctx.request.headers,
+    const reqBodyObj = ctx.request.body || {}
+    const reqBody = z.object(bodySchema).safeParse(reqBodyObj)
+    if (reqBody.success === false) {
+      throw err(400, "Invalid request body", {
+        errors: reqBody.error.errors,
       })
+    }
 
-      if (result instanceof APIResponse) {
-        const respBody = z.object(respSchema).safeParse(result.data)
-        if (respBody.success === false) {
-          throw new Error(`Invalid response body: ${respBody.error}`)
+    const fileFieldsObj: { [key: string]: File[] } = {}
+    if (ctx.files) {
+      for (const files of ctx.files as multer.File[]) {
+        if (!fileFieldsObj[files.fieldname]) {
+          fileFieldsObj[files.fieldname] = []
         }
-        ctx.body = resp(result.status, result.message, respBody.data)
-      } else if (result instanceof APIError) {
-        const errBody = z.object(errSchema).strict().safeParse(result.data)
-        if (errBody.success === false) {
-          throw new Error(`Invalid error body: ${errBody.error}`)
-        }
-        throw err(result.status, result.message, errBody.data)
-      } else {
-        throw new Error(
-          `Invalid handler return value: ${result} of type ${typeof result}`,
-        )
+        fileFieldsObj[files.fieldname].push({
+          filename: files.originalname,
+          mimetype: files.mimetype,
+          bytes: files.buffer,
+        })
       }
-    } finally {
-      // We must delete the uploaded files, even if some error is thrown while handling the request
-      if (ctx.files) {
-        for (const file of ctx.files as multer.File[]) {
-          await unlink(file.path)
-        }
+    }
+    const fileFieldsShape: Record<string, z.ZodTypeAny> = {}
+    for (const [fieldName, fieldOptions] of Object.entries(fileSchema)) {
+      fileFieldsShape[fieldName] = z
+        .array(FileSchema)
+        .max(fieldOptions.maxCount)
+    }
+    const FileFieldsSchema = z.object(fileFieldsShape)
+    const fileFields = FileFieldsSchema.safeParse(fileFieldsObj)
+    if (fileFields.success === false) {
+      throw err(400, "Invalid file fields", {
+        errors: fileFields.error.errors,
+      })
+    }
+
+    const params = z.object(paramsSchema).strict().safeParse(ctx.params)
+    if (params.success === false) {
+      throw err(400, "Invalid URL params", {
+        errors: params.error.errors,
+      })
+    }
+
+    const query = z.object(querySchema).safeParse(ctx.request.query)
+    if (query.success === false) {
+      throw err(400, "Invalid query params", {
+        errors: query.error.errors,
+      })
+    }
+
+    const result = await handler({
+      params: params.data,
+      query: query.data,
+      body: reqBody.data,
+      files: fileFields.data,
+      headers: ctx.request.headers,
+    })
+
+    if (result instanceof APIResponse) {
+      const respBody = z.object(respSchema).safeParse(result.data)
+      if (respBody.success === false) {
+        throw new Error(`Invalid response body: ${respBody.error}`)
       }
+      ctx.body = resp(result.status, result.message, respBody.data)
+    } else if (result instanceof APIError) {
+      const errBody = z.object(errSchema).strict().safeParse(result.data)
+      if (errBody.success === false) {
+        throw new Error(`Invalid error body: ${errBody.error}`)
+      }
+      throw err(result.status, result.message, errBody.data)
+    } else {
+      throw new Error(
+        `Invalid handler return value: ${result} of type ${typeof result}`,
+      )
     }
   }
 }

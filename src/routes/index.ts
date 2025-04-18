@@ -17,7 +17,7 @@ type Endpt = {
   type: "endpt"
   method: Method
   path: string
-  handler: APIHandler<any, any, any, any>
+  handler: APIHandler<any, any, any, any, any, any>
 }
 
 type Middle = {
@@ -34,7 +34,7 @@ type Group = {
 function endpt(
   path: string,
   method: Method,
-  handler: APIHandler<any, any, any, any>,
+  handler: APIHandler<any, any, any, any, any, any>,
 ): Endpt {
   return { type: "endpt", method, path, handler }
 }
