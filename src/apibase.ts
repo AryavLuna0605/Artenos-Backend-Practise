@@ -291,4 +291,4 @@ export function createRouterFromConfig(config: RouteConf): Router {
   return new Router().use(config.path, router.routes())
 }
 
-export { z as s }
+export { z }
