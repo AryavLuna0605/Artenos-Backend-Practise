@@ -27,7 +27,7 @@ export class APIError<T extends BaseBody> {
   }
 }
 
-const FileSchema = z.object({
+export const FileSchema = z.object({
   filename: z.string().min(1),
   mimetype: z.string().min(1),
   bytes: z.instanceof(Buffer),
@@ -84,7 +84,7 @@ type APIHandler<
   TParams extends z.ZodRawShape,
   TQuery extends z.ZodRawShape,
   TBody extends z.ZodRawShape,
-  TFiles extends Record<string, { maxCount: number }>,
+  TFiles extends { [fieldName: string]: z.ZodArray<z.ZodType<File>> },
   TResp extends z.ZodRawShape,
   TErr extends z.ZodRawShape,
 > = {
@@ -110,7 +110,7 @@ export function apihandler<
   TParams extends z.ZodRawShape = {},
   TQuery extends z.ZodRawShape = {},
   TBody extends z.ZodRawShape = {},
-  TFiles extends Record<string, { maxCount: number }> = {},
+  TFiles extends { [fieldName: string]: z.ZodArray<z.ZodType<File>> } = {},
   TResp extends z.ZodRawShape = {},
   TErr extends z.ZodRawShape = {},
 >(apiHander: APIHandler<TParams, TQuery, TBody, TFiles, TResp, TErr>) {
@@ -122,7 +122,7 @@ function handlerToKoaMiddleware(
     z.ZodRawShape,
     z.ZodRawShape,
     z.ZodRawShape,
-    Record<string, { maxCount: number }>,
+    { [fieldName: string]: z.ZodArray<z.ZodType<File>> },
     z.ZodRawShape,
     z.ZodRawShape
   >,
@@ -158,14 +158,7 @@ function handlerToKoaMiddleware(
         })
       }
     }
-    const fileFieldsShape: Record<string, z.ZodTypeAny> = {}
-    for (const [fieldName, fieldOptions] of Object.entries(fileSchema)) {
-      fileFieldsShape[fieldName] = z
-        .array(FileSchema)
-        .max(fieldOptions.maxCount)
-    }
-    const FileFieldsSchema = z.object(fileFieldsShape)
-    const fileFields = FileFieldsSchema.safeParse(fileFieldsObj)
+    const fileFields = z.object(fileSchema).safeParse(fileFieldsObj)
     if (fileFields.success === false) {
       throw err(400, "Invalid file fields", {
         errors: fileFields.error.errors,

@@ -1,4 +1,4 @@
-import { resp, apihandler, z } from "../apibase.js"
+import { resp, apihandler, z, FileSchema } from "../apibase.js"
 
 export const healthcheck = apihandler({ handler: async () => resp(200, "ok") })
 
@@ -15,7 +15,7 @@ const exampleHandler = apihandler({
     age: z.number().int().positive(),
   },
   fileSchema: {
-    resume: { maxCount: 2 },
+    resume: z.array(FileSchema).max(2),
   },
   respSchema: {
     id: z.string(),
