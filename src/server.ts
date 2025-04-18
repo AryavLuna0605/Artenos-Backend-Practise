@@ -11,8 +11,6 @@ import logger from "./services/logger.js"
 
 import ROUTES from "./routes/index.js"
 
-const multipartBodyParser = multer().any()
-
 async function main() {
   logger.info("Connecting to database...")
   const dbClient = getDbClient({ logQueries: false })
@@ -31,7 +29,7 @@ async function main() {
   app.use(requestLogger)
   app.use(apiConventions)
   app.use(bodyParser({ enableTypes: ["json"] }))
-  app.use(multipartBodyParser)
+  app.use(multer().any())
   app.use(ROUTES)
 
   logger.info("Starting server...")
