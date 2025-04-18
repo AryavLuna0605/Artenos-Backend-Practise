@@ -35,13 +35,6 @@ export const FileSchema = z.object({
 
 type File = z.infer<typeof FileSchema>
 
-export const fileSchema = z.object({
-  filename: z.string().min(1),
-  mimetype: z.string().min(1),
-  path: z.string().min(1),
-  bytes: z.number().int().positive().optional(),
-})
-
 export function err<T extends BaseBody>(
   status: number,
   message: string,
