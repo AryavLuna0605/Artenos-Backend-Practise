@@ -100,33 +100,9 @@ src/
 
 ## Creating New Endpoints
 
-The template provides a type-safe API handler system. Here's a basic example:
+The template provides a type-safe API handler system.
 
-```typescript
-// Example endpoint
-endpt(
-  "/users/:id",
-  GET,
-  apihandler({
-    paramsSchema: { id: z.string() },
-    querySchema: { includeDetails: z.boolean().optional() },
-    respSchema: {
-      id: z.string(),
-      name: z.string(),
-      email: z.string().email(),
-    },
-    errSchema: { message: z.string() },
-    handler: async ({ params, query }) => {
-      // Implementation goes here
-      return resp(200, "User retrieved successfully", {
-        id: params.id,
-        name: "John",
-        email: "john@example.com",
-      })
-    },
-  }),
-)
-```
+See a complete example of how to write type-safe API handlers in the [src/routes/health.ts](/src/routes/health.ts#L6) module.
 
 ## Building for Production
 
