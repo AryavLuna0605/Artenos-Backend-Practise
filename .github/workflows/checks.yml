@@ -27,8 +27,8 @@ jobs:
         run: docker build -t backend .
       - name: Run PostgreSQL container
         run: |
-          docker network create drpaws-network
-          CONTAINER_ID=$(docker run -d --name postgres --network drpaws-network -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres)
+          docker network create testnetwork
+          CONTAINER_ID=$(docker run -d --name postgres --network testnetwork -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres)
           echo "PostgreSQL container started"
           echo "Sleep for 5 seconds to allow the container to start"
           sleep 5
@@ -37,7 +37,7 @@ jobs:
       - name: Run Docker container
         run: |
           cp .env.template .env
-          CONTAINER_ID=$(docker run -d --network drpaws-network -p 3001:3001 --env-file .env -e DBHOST=postgres backend)
+          CONTAINER_ID=$(docker run -d --network testnetwork -p 3001:3001 --env-file .env -e DBHOST=postgres backend)
           echo "Container ID: $CONTAINER_ID"
           echo "Sleep for 5 seconds to allow the container to start"
           sleep 5
