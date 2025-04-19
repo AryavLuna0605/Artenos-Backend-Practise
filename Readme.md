@@ -111,3 +111,9 @@ npm run build
 ```
 
 This creates a production-ready build in the `dist` directory.
+
+There is a Dockerfile included for building a Docker image:
+
+```bash
+docker build -t backend .
+```
