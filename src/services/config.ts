@@ -12,6 +12,7 @@ const envSchema = z.object({
   DBPASS: z.string(),
   DBNAME: z.string(),
   CORS_ALLOWED_ORIGIN: z.string(),
+  JWT_SECRET_KEY: z.string(),
 })
 
 const env = envSchema.parse(process.env)

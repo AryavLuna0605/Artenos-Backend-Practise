@@ -16,6 +16,16 @@ enum QUERIES {
   SELECT_NOW = `
     SELECT NOW();
   `,
+  INSERT_USER = `
+    INSERT INTO users (name, email, password)
+    VALUES ($1, $2, $3)
+    RETURNING id::text, name, email;
+  `,
+  GET_USER_BY_EMAIL = `
+    SELECT id::text, name, email, password
+    FROM users
+    WHERE email = $1;
+  `
 }
 
 type ColumnValueTypes =
@@ -32,6 +42,23 @@ const QUERY_TO_Z_MAPPING = {
       now: z.date(),
     },
   },
+  [QUERIES.INSERT_USER]: {
+    args: [z.string(), z.string().email(), z.string()], // name, email, password
+    rows: {
+      id: z.string(), // UUID or use z.number().int() if SERIAL
+      name: z.string(),
+      email: z.string().email(),
+    },
+  },
+  [QUERIES.GET_USER_BY_EMAIL]: {
+    args: [z.string().email()], // email to look for
+    rows: {
+      id: z.string(),
+      name: z.string(),
+      email: z.string().email(),
+      password: z.string(),
+    },
+  },
 } satisfies {
   [Q in QUERIES]: {
     args: [ColumnValueTypes, ...ColumnValueTypes[]] | []
@@ -40,6 +67,7 @@ const QUERY_TO_Z_MAPPING = {
     }
   }
 }
+
 
 interface QueryResult<T = Record<string, unknown>> {
   rows: T[]

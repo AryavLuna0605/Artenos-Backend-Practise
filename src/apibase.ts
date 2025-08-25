@@ -93,11 +93,13 @@ type APIHandler<
     body: z.infer<z.ZodObject<TBody>>
     files: { [Key in keyof TFiles]: File[] }
     headers: Koa.Request["headers"]
+    ctx?: Koa.Context
   }) => Promise<
     | APIResponse<z.infer<z.ZodObject<TResp>>>
     | APIError<z.infer<z.ZodObject<TErr>>>
   >
 }
+
 
 export function apihandler<
   TParams extends z.ZodRawShape = {},
@@ -178,6 +180,7 @@ function handlerToKoaMiddleware(
       body: reqBody.data,
       files: fileFields.data,
       headers: ctx.request.headers,
+      ctx,
     })
 
     if (result instanceof APIResponse) {

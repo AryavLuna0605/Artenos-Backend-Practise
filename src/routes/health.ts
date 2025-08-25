@@ -26,7 +26,7 @@ const exampleHandler = apihandler({
     errCode: z.string(),
     userMsg: z.string(),
   },
-  handler: async ({ params, query, body, files }) => {
+  handler: async ({ params, query, body, files, ctx }) => {
     // Handle the request here
     return resp(200, "ok", { id: params.id, name: body.name, age: body.age })
   },
