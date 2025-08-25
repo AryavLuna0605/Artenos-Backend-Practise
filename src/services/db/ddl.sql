@@ -5,3 +5,10 @@ CREATE TABLE users (
     password TEXT NOT NULL,         -- store hashed passwords here
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE projects (
+    id SERIAL PRIMARY KEY,              
+    name TEXT NOT NULL,
+    created_by TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+)

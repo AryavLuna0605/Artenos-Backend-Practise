@@ -25,6 +25,11 @@ enum QUERIES {
     SELECT id::text, name, email, password
     FROM users
     WHERE email = $1;
+  `,
+  INSERT_PROJECT = `
+    INSERT INTO projects (name, created_by)
+    VALUES ($1, $2)
+    RETURNING name, created_by;
   `
 }
 
@@ -59,6 +64,13 @@ const QUERY_TO_Z_MAPPING = {
       password: z.string(),
     },
   },
+  [QUERIES.INSERT_PROJECT]: {
+    args: [z.string(), z.string()],
+    rows: {
+      name: z.string(),
+      created_by: z.string(),
+    }
+  }
 } satisfies {
   [Q in QUERIES]: {
     args: [ColumnValueTypes, ...ColumnValueTypes[]] | []
