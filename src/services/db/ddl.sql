@@ -9,6 +9,6 @@ CREATE TABLE users (
 CREATE TABLE projects (
     id SERIAL PRIMARY KEY,              
     name TEXT NOT NULL,
-    created_by TEXT UNIQUE NOT NULL,
+    created_by TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 )
