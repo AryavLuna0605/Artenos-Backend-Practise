@@ -7,11 +7,12 @@ import {
   createRouterFromConfig,
   middl,
   DELETE,
+  PATCH,
 } from "../apibase.js"
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { createUser, loginUser } from "./auth.js";
 import { healthcheck } from "./health.js"
-import { createProject, deleteProject, getProjects } from "./project.js";
+import { createProject, deleteProject, getProjects, updateProjectName } from "./project.js";
 
 const ROUTE_CONF: RouteConf = group("/api", [
   endpt("/health", GET, healthcheck),
@@ -20,7 +21,8 @@ const ROUTE_CONF: RouteConf = group("/api", [
   middl(authMiddleware),
   endpt("/project", GET, getProjects),
   endpt("/project/create",POST, createProject),
-  endpt("/project/:id", DELETE, deleteProject)
+  endpt("/project/:id", DELETE, deleteProject),
+  endpt("/project/:id",PATCH, updateProjectName),
 ])
 
 

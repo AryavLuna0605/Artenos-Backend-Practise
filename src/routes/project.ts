@@ -99,3 +99,34 @@ export const deleteProject = apihandler({
     }
   },
 })
+
+export const updateProjectName = apihandler({
+  paramsSchema: {
+    id: z.string(),
+  },
+  bodySchema: {
+    name: z.string(),
+  },
+  respSchema: {
+    id: z.string(),
+    name: z.string(),
+    created_by: z.string(),
+  },
+  errSchema: {
+    errCode: z.string(),
+    userMsg: z.string(),
+  },
+  handler: async ({ params, query, body, files, ctx }) => {
+    // Handle the request here
+    try {
+      const response = await db.execQuery(QUERIES.UPDATE_PROJECT, [body.name, params.id])
+      return resp(200, "ok", {id: response.rows[0].id , name: response.rows[0].name, created_by: response.rows[0].created_by})
+    } catch (error) {
+      return err(401, "Updation failed", {
+        errCode: "ERROR IN UPDATING THE TABLE",
+        userMsg: "Project updation failed"+error
+      })
+    }
+    
+  },
+})

@@ -33,11 +33,18 @@ enum QUERIES {
   `,
   GET_PROJECTS = `
     SELECT id::text, name, created_by 
-    FROM projects;
+    FROM projects
+    ORDER BY created_at ASC;
   `,
   DELETE_PROJECT = `
     DELETE FROM projects
     WHERE id = $1;
+  `,
+  UPDATE_PROJECT = `
+    UPDATE projects
+    SET name = $1
+    WHERE id = $2
+    RETURNING id::text, name, created_by
   `
 }
 
@@ -75,7 +82,7 @@ const QUERY_TO_Z_MAPPING = {
   [QUERIES.INSERT_PROJECT]: {
     args: [z.string(), z.string()],
     rows: {
-      id:z.string(),
+      id: z.string(),
       name: z.string(),
       created_by: z.string(),
     }
@@ -91,6 +98,14 @@ const QUERY_TO_Z_MAPPING = {
   [QUERIES.DELETE_PROJECT]: {
     args: [z.string(),],
     rows: {},
+  },
+  [QUERIES.UPDATE_PROJECT]: {
+    args: [z.string(),z.string()],
+    rows: {
+      id: z.string(),
+      name: z.string(),
+      created_by: z.string(),
+    }
   }
 } satisfies {
   [Q in QUERIES]: {
@@ -100,7 +115,6 @@ const QUERY_TO_Z_MAPPING = {
     }
   }
 }
-
 
 interface QueryResult<T = Record<string, unknown>> {
   rows: T[]
