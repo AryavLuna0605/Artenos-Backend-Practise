@@ -29,7 +29,15 @@ enum QUERIES {
   INSERT_PROJECT = `
     INSERT INTO projects (name, created_by)
     VALUES ($1, $2)
-    RETURNING name, created_by;
+    RETURNING id::text ,name, created_by;
+  `,
+  GET_PROJECTS = `
+    SELECT id::text, name, created_by 
+    FROM projects;
+  `,
+  DELETE_PROJECT = `
+    DELETE FROM projects
+    WHERE id = $1;
   `
 }
 
@@ -67,9 +75,22 @@ const QUERY_TO_Z_MAPPING = {
   [QUERIES.INSERT_PROJECT]: {
     args: [z.string(), z.string()],
     rows: {
+      id:z.string(),
       name: z.string(),
       created_by: z.string(),
     }
+  },
+  [QUERIES.GET_PROJECTS]: {
+    args: [],
+    rows: {
+      id: z.string(),
+      name: z.string(),
+      created_by: z.string(),
+    }
+  },
+  [QUERIES.DELETE_PROJECT]: {
+    args: [z.string(),],
+    rows: {},
   }
 } satisfies {
   [Q in QUERIES]: {
