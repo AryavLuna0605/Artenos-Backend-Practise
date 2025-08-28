@@ -30,8 +30,6 @@ export const createUser = apihandler({
         body.email,
         hashedPassword,
       ])
-
-      console.log(result.rows+"yay---------------");
       const row = result.rows[0]
       
       return resp(201, "User registered successfully", {
@@ -94,9 +92,9 @@ export const loginUser = apihandler({
         email: user.email,
       })
     } catch (error) {
-      return err(500, "User creation failed", {
-        errCode: "USER_CREATION_FAILED",
-        userMsg: "Unable to register"+error,
+      return err(500, "User login failed", {
+        errCode: "USER_Login_FAILED",
+        userMsg: "Unable to Login"+error,
       })
     }
   },

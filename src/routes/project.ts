@@ -24,7 +24,13 @@ export const createProject = apihandler({
     // Handle the request here
     try {
       const user = ctx?.state.user;
-      logger.info(user.id + " " + body.name)
+      const response = await db.execQuery(QUERIES.GET_PROJECT_BY_NAME, [body.name, user.id]);
+      if(response.rows.length>0){
+        return err(400, "Table already exist", {
+          errCode: "TABLE_CREATION_FAILED",
+          userMsg: "Table with similar name already exist"
+        })
+      }
       const result = await db.execQuery(QUERIES.INSERT_PROJECT, [body.name, user.id])
       const projectDetails = [{ id: result.rows[0].id, name: result.rows[0].name, created_by: result.rows[0].created_by }]
       return resp(200, "ok", { projectDetails })
@@ -119,14 +125,14 @@ export const updateProjectName = apihandler({
   handler: async ({ params, query, body, files, ctx }) => {
     // Handle the request here
     try {
+      
       const response = await db.execQuery(QUERIES.UPDATE_PROJECT, [body.name, params.id])
       return resp(200, "ok", {id: response.rows[0].id , name: response.rows[0].name, created_by: response.rows[0].created_by})
     } catch (error) {
-      return err(401, "Updation failed", {
+      return err(500, "Updation failed", {
         errCode: "ERROR IN UPDATING THE TABLE",
         userMsg: "Project updation failed"+error
       })
     }
-    
   },
 })

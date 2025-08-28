@@ -29,10 +29,10 @@ enum QUERIES {
   INSERT_PROJECT = `
     INSERT INTO projects (name, created_by)
     VALUES ($1, $2)
-    RETURNING id::text ,name, created_by;
+    RETURNING id::text ,name, created_by::text;
   `,
   GET_PROJECTS = `
-    SELECT id::text, name, created_by 
+    SELECT id::text, name, created_by::text
     FROM projects
     ORDER BY created_at ASC;
   `,
@@ -44,7 +44,12 @@ enum QUERIES {
     UPDATE projects
     SET name = $1
     WHERE id = $2
-    RETURNING id::text, name, created_by
+    RETURNING id::text, name, created_by::text
+  `,
+  GET_PROJECT_BY_NAME = `
+    SELECT id::text, name, created_by::text
+    FROM projects
+    WHERE name=$1 AND created_by = $2;
   `
 }
 
@@ -101,6 +106,14 @@ const QUERY_TO_Z_MAPPING = {
   },
   [QUERIES.UPDATE_PROJECT]: {
     args: [z.string(),z.string()],
+    rows: {
+      id: z.string(),
+      name: z.string(),
+      created_by: z.string(),
+    }
+  },
+  [QUERIES.GET_PROJECT_BY_NAME]: {
+    args: [z.string(), z.string()],
     rows: {
       id: z.string(),
       name: z.string(),
